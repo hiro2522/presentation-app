@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI意地悪面接官 - プレゼン理解度チェック</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --danger: #ef4444;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+            background: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            padding: 28px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        p.subtitle {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        button:disabled {
+            background-color: #a5b4fc;
+            cursor: not-allowed;
+        }
+
+        .api-key-box {
+            background-color: #f1f5f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.85rem;
+        }
+
+        .api-key-box input {
+            margin-top: 6px;
+        }
+
+        .question-card {
+            background-color: #f8fafc;
+            border-left: 4px solid var(--primary);
+            padding: 16px;
+            border-radius: 4px 8px 8px 4px;
+            margin-bottom: 16px;
+        }
+
+        .question-number {
+            font-size: 0.8rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-transform: uppercase;
+        }
+
+        .question-text {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .timer-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .badge {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .review-box {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .review-q {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+
+        .review-a {
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🥊 AI意地悪面接官</h1>
+    <p class="subtitle">自分のプレゼン内容を誰よりも理解できているか「ツッコミ千本ノック」でテスト！</p>
+
+    <!-- STEP 1: 設定 & 原稿入力 -->
+    <div id="step-setup">
+        <div class="api-key-box">
+            <label for="api-key" style="margin:0;">Gemini APIキー (任意)</label>
+            <p style="margin: 2px 0 6px 0; color: var(--text-muted);">APIキーを設定するとAIがリアルタイムで高度なツッコミを自動生成します。未入力の場合は内蔵ロジックで動作します。</p>
+            <input type="password" id="api-key" placeholder="AIzaSy...">
+        </div>
+
+        <div class="section">
+            <label for="presentation-text">1分プレゼン原稿 / 話すテーマ</label>
+            <textarea id="presentation-text" placeholder="例：ヒカキンさんの凄さは10年間の継続力ではなく、一度もファンの信頼を裏切らない工夫をし続けたことにあります。私たちは何かを続ける時..."></textarea>
+        </div>
+
+        <button id="btn-generate" onclick="startKnock()">意地悪ツッコミ生成開始！</button>
+    </div>
+
+    <!-- STEP 2: 千本ノック実行 -->
+    <div id="step-knock" class="hidden">
+        <div class="timer-box">
+            <span>制限時間（即興回答）</span>
+            <span id="timer">30 秒</span>
+        </div>
+
+        <div class="question-card">
+            <div class="question-number" id="q-number">QUESTION 1 / 3</div>
+            <div class="question-text" id="q-text">質問をロード中...</div>
+        </div>
+
+        <div class="section">
+            <label for="answer-text">あなたの回答 (思考をまとめる・メモ用)</label>
+            <textarea id="answer-text" placeholder="「なぜかというと...」「それについては...」と声に出しながらメモを入力してください"></textarea>
+        </div>
+
+        <button id="btn-next" onclick="nextQuestion()">次のツッコミへ進む ➔</button>
+    </div>
+
+    <!-- STEP 3: 振り返り -->
+    <div id="step-result" class="hidden">
+        <h2>🎉 千本ノック終了！</h2>
+        <p style="color: var(--text-muted); margin-bottom: 20px;">お疲れ様でした！質問に対して詰まらずに自分の言葉で答えられましたか？</p>
+
+        <div id="result-list"></div>
+
+        <button onclick="resetAll()" style="margin-top: 20px; background-color: var(--text-muted);">もう一度別のテーマで試す</button>
+    </div>
+</div>
+
+<script>
+    let currentQuestions = [];
+    let currentAnswers = [];
+    let currentIndex = 0;
+    let timerInterval = null;
+    let timeLeft = 30;
+
+    async function startKnock() {
+        const text = document.getElementById('presentation-text').value.trim();
+        const apiKey = document.getElementById('api-key').value.trim();
+
+        if (!text) {
+            alert('プレゼン原稿またはテーマを入力してください。');
+            return;
+        }
+
+        const btn = document.getElementById('btn-generate');
+        btn.disabled = true;
+        btn.innerText = 'AIが鋭いツッコミを生成中...';
+
+        try {
+            if (apiKey) {
+                currentQuestions = await fetchQuestionsFromGemini(text, apiKey);
+            } else {
+                currentQuestions = generateFallbackQuestions(text);
+            }
+        } catch (e) {
+            alert('Gemini APIでの生成に失敗したため、疑似質問モードで実行します。');
+            currentQuestions = generateFallbackQuestions(text);
+        }
+
+        btn.disabled = false;
+        btn.innerText = '意地悪ツッコミ生成開始！';
+
+        if (currentQuestions.length === 0) {
+            alert('質問の生成に失敗しました。');
+            return;
+        }
+
+        currentAnswers = [];
+        currentIndex = 0;
+
+        document.getElementById('step-setup').classList.add('hidden');
+        document.getElementById('step-knock').classList.remove('hidden');
+
+        showQuestion();
+    }
+
+    function showQuestion() {
+        document.getElementById('q-number').innerText = `QUESTION ${currentIndex + 1} / ${currentQuestions.length}`;
+        document.getElementById('q-text').innerText = currentQuestions[currentIndex];
+        document.getElementById('answer-text').value = '';
+
+        // タイマーリセット (30秒)
+        clearInterval(timerInterval);
+        timeLeft = 30;
+        updateTimerDisplay();
+
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimerDisplay();
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+            }
+        }, 1000);
+    }
+
+    function updateTimerDisplay() {
+        const timerEl = document.getElementById('timer');
+        timerEl.innerText = `${timeLeft} 秒`;
+        if (timeLeft <= 10) {
+            timerEl.style.color = '#ef4444';
+        } else {
+            timerEl.style.color = '#3730a3';
+        }
+    }
+
+    function nextQuestion() {
+        clearInterval(timerInterval);
+        const ans = document.getElementById('answer-text').value.trim();
+        currentAnswers.push(ans || '(口頭回答のみ / メモなし)');
+
+        currentIndex++;
+
+        if (currentIndex < currentQuestions.length) {
+            showQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        document.getElementById('step-knock').classList.add('hidden');
+        document.getElementById('step-result').classList.remove('hidden');
+
+        const container = document.getElementById('result-list');
+        container.innerHTML = '';
+
+        currentQuestions.forEach((q, idx) => {
+            const div = document.createElement('div');
+            div.className = 'review-box';
+            div.innerHTML = `
+                <div class="review-q">Q${idx + 1}: ${q}</div>
+                <div class="review-a">あなたの回答メモ: ${currentAnswers[idx]}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function resetAll() {
+        document.getElementById('step-result').classList.add('hidden');
+        document.getElementById('step-setup').classList.remove('hidden');
+    }
+
+    // Gemini API 呼び出し
+    async function fetchQuestionsFromGemini(text, apiKey) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const prompt = `以下のプレゼン原稿を読み、発表者が「本当の理解者」かどうかを試すための「鋭いツッコミ質問」「背景のなぜを聞く質問」「意地悪な質問」を3つ作成してください。
+JSON配列形式 [ "質問1", "質問2", "質問3" ] でのみ出力してください。余計な解説は不要です。
+
+【原稿】
+${text}`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+
+        const data = await response.json();
+        const rawText = data.candidates[0].content.parts[0].text;
+        const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+        return JSON.parse(cleanJson);
+    }
+
+    // APIキーがない場合の疑似質問生成
+    function generateFallbackQuestions(text) {
+        return [
+            "その結論に至った一番の根本的な理由（なぜ？）を、1文で言い切ると何ですか？",
+            "反対の立場の人から『それって〇〇というリスクやデメリットがあるのでは？』と言われたらどう反論しますか？",
+            "もし時間や予算、状況が全く違う場合でも、そのロジックや説得力は成り立ちますか？"
+        ];
+    }
+</script>
+
+</body>
+</html>
