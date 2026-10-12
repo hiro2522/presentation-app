@@ -110,18 +110,6 @@
             cursor: not-allowed;
         }
 
-        .api-key-box {
-            background-color: #f1f5f9;
-            padding: 12px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 0.85rem;
-        }
-
-        .api-key-box input {
-            margin-top: 6px;
-        }
-
         .question-card {
             background-color: #f8fafc;
             border-left: 4px solid var(--primary);
@@ -141,6 +129,7 @@
             font-size: 1.05rem;
             font-weight: 600;
             margin-top: 4px;
+            line-height: 1.5;
         }
 
         .timer-box {
@@ -157,15 +146,6 @@
 
         .hidden {
             display: none;
-        }
-
-        .badge {
-            background: #dcfce7;
-            color: #166534;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
         }
 
         .review-box {
@@ -197,14 +177,8 @@
     <h1>🥊 AI意地悪面接官</h1>
     <p class="subtitle">自分のプレゼン内容を誰よりも理解できているか「ツッコミ千本ノック」でテスト！</p>
 
-    <!-- STEP 1: 設定 & 原稿入力 -->
+    <!-- STEP 1: 原稿入力 -->
     <div id="step-setup">
-        <div class="api-key-box">
-            <label for="api-key" style="margin:0;">Gemini APIキー (任意)</label>
-            <p style="margin: 2px 0 6px 0; color: var(--text-muted);">APIキーを設定するとAIがリアルタイムで高度なツッコミを自動生成します。未入力の場合は内蔵ロジックで動作します。</p>
-            <input type="password" id="api-key" placeholder="AIzaSy...">
-        </div>
-
         <div class="section">
             <label for="presentation-text">1分プレゼン原稿 / 話すテーマ</label>
             <textarea id="presentation-text" placeholder="例：ヒカキンさんの凄さは10年間の継続力ではなく、一度もファンの信頼を裏切らない工夫をし続けたことにあります。私たちは何かを続ける時..."></textarea>
@@ -251,38 +225,16 @@
     let timerInterval = null;
     let timeLeft = 30;
 
-    async function startKnock() {
+    function startKnock() {
         const text = document.getElementById('presentation-text').value.trim();
-        const apiKey = document.getElementById('api-key').value.trim();
 
         if (!text) {
             alert('プレゼン原稿またはテーマを入力してください。');
             return;
         }
 
-        const btn = document.getElementById('btn-generate');
-        btn.disabled = true;
-        btn.innerText = 'AIが鋭いツッコミを生成中...';
-
-        try {
-            if (apiKey) {
-                currentQuestions = await fetchQuestionsFromGemini(text, apiKey);
-            } else {
-                currentQuestions = generateFallbackQuestions(text);
-            }
-        } catch (e) {
-            alert('Gemini APIでの生成に失敗したため、疑似質問モードで実行します。');
-            currentQuestions = generateFallbackQuestions(text);
-        }
-
-        btn.disabled = false;
-        btn.innerText = '意地悪ツッコミ生成開始！';
-
-        if (currentQuestions.length === 0) {
-            alert('質問の生成に失敗しました。');
-            return;
-        }
-
+        // 入力文からキーワードを解析してオリジナルのツッコミを生成
+        currentQuestions = generateDynamicQuestions(text);
         currentAnswers = [];
         currentIndex = 0;
 
@@ -292,12 +244,27 @@
         showQuestion();
     }
 
+    function generateDynamicQuestions(text) {
+        // 原稿から単語を抽出
+        const words = text.match(/[一-龠々ヶぁ-んァ-ヶa-zA-Z0-9]+/g) || [];
+        const uniqueWords = [...new Set(words)].filter(w => w.length > 1);
+
+        const topic1 = uniqueWords[0] || "その主張";
+        const topic2 = uniqueWords[Math.floor(uniqueWords.length / 2)] || "その工夫";
+        const topic3 = uniqueWords[uniqueWords.length - 1] || "その結果";
+
+        return [
+            `「${topic1}」が重要とおっしゃいましたが、もしそれが全く通用しない業界や状況があるとしたら、どんなケースが考えられますか？`,
+            `原稿の中で出てきた「${topic2}」についてですが、それを実行することで生じる『最大のデメリットやリスク』は何だと思いますか？`,
+            `あなたが考える「${topic3}」の本質を、小学生でも理解できるように一言でたとえると何になりますか？`
+        ];
+    }
+
     function showQuestion() {
         document.getElementById('q-number').innerText = `QUESTION ${currentIndex + 1} / ${currentQuestions.length}`;
         document.getElementById('q-text').innerText = currentQuestions[currentIndex];
         document.getElementById('answer-text').value = '';
 
-        // タイマーリセット (30秒)
         clearInterval(timerInterval);
         timeLeft = 30;
         updateTimerDisplay();
@@ -356,38 +323,6 @@
     function resetAll() {
         document.getElementById('step-result').classList.add('hidden');
         document.getElementById('step-setup').classList.remove('hidden');
-    }
-
-    // Gemini API 呼び出し
-    async function fetchQuestionsFromGemini(text, apiKey) {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-        const prompt = `以下のプレゼン原稿を読み、発表者が「本当の理解者」かどうかを試すための「鋭いツッコミ質問」「背景のなぜを聞く質問」「意地悪な質問」を3つ作成してください。
-JSON配列形式 [ "質問1", "質問2", "質問3" ] でのみ出力してください。余計な解説は不要です。
-
-【原稿】
-${text}`;
-
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        });
-
-        const data = await response.json();
-        const rawText = data.candidates[0].content.parts[0].text;
-        const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
-        return JSON.parse(cleanJson);
-    }
-
-    // APIキーがない場合の疑似質問生成
-    function generateFallbackQuestions(text) {
-        return [
-            "その結論に至った一番の根本的な理由（なぜ？）を、1文で言い切ると何ですか？",
-            "反対の立場の人から『それって〇〇というリスクやデメリットがあるのでは？』と言われたらどう反論しますか？",
-            "もし時間や予算、状況が全く違う場合でも、そのロジックや説得力は成り立ちますか？"
-        ];
     }
 </script>
 
